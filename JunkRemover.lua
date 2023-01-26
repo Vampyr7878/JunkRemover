@@ -11,7 +11,7 @@ junkRemoverButton:SetScript("OnClick", function(self, button)
 				for i = 1, table.getn(junkRemoverItems) do
 					junkRemoverBag, junkRemoverSlot = junkRemoverFindItem(junkRemoverItems[i])
 					if junkRemoverBag ~= -1 then
-						PickupContainerItem(junkRemoverBag, junkRemoverSlot)
+						C_Container.PickupContainerItem(junkRemoverBag, junkRemoverSlot)
 						print(junkRemoverItems[i].." Removed")
 						table.remove(junkRemoverItems, i)
 						DeleteCursorItem()
@@ -62,10 +62,10 @@ function junkRemoverFindItem(name)
 	local junkRemoverSlots = {}
 	local junkRemoverName
 	for i = 0, NUM_BAG_SLOTS do
-	junkRemoverSlots = GetContainerFreeSlots(i)
-		for j = 1, GetContainerNumSlots(i) do
+	junkRemoverSlots = C_Container.GetContainerFreeSlots(i)
+		for j = 1, C_Container.GetContainerNumSlots(i) do
 			if not junkRemoverTableContains(j, junkRemoverSlots) then
-				junkRemoverName = GetItemInfo(GetContainerItemID(i, j))
+				junkRemoverName = GetItemInfo(C_Container.GetContainerItemID(i, j))
 				if name == junkRemoverName then
 					return i, j
 				end
