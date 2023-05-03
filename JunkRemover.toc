@@ -1,7 +1,8 @@
-## Interface: 100007
+## Interface: 100100
 ## Title: Junk Remover
 ## Notes: Automaticly removes gray quality items from your inventory right after you loot them.
 ## Author: Vampyr78
-## Version: 2.0.1
+## Version: 2.1
 ## SavedVariablesPerCharacter: junkRemoverEnabled
+## IconTexture: Interface\Icons\inv_gizmo_03.blp
 JunkRemover.lua
