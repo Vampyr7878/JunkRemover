@@ -1,25 +1,7 @@
+local JunkRemover = LibStub("AceAddon-3.0"):NewAddon("JunkRemover")
+
 SLASH_JUNKREMOVER1 = "/junkremover"
 SLASH_JUNKREMOVER2 = "/jr"
-
-junkRemoverButtons = {}
-
-junkRemoverButton = CreateFrame("Button", "Junk Remover Button", UIParent, "SecureActionButtonTemplate")
-junkRemoverButton:SetScript("OnClick", function(self, button)
-	if button == "Left Mouse Button" then
-		local junkRemoverBag, junkRemoverSlot
-			if junkRemoverItems ~= nil then
-				for i = 1, table.getn(junkRemoverItems) do
-					junkRemoverBag, junkRemoverSlot = junkRemoverFindItem(junkRemoverItems[i])
-					if junkRemoverBag ~= -1 then
-						C_Container.PickupContainerItem(junkRemoverBag, junkRemoverSlot)
-						print(junkRemoverItems[i].." Removed")
-						table.remove(junkRemoverItems, i)
-						DeleteCursorItem()
-					end
-				end
-			end
-	end
-end)
 
 function SlashCmdList.JUNKREMOVER(msg, editbox)
 	if msg == "on" then
@@ -31,42 +13,31 @@ function SlashCmdList.JUNKREMOVER(msg, editbox)
 	end
 end
 
-function junkRemoverFrameOnEvent(self, event, arg1)
-	if event == "ADDON_LOADED" and arg1 == "JunkRemover" then
-		SetOverrideBindingClick(junkRemoverButton, true, "BUTTON3", junkRemoverButton:GetName(), "Left Mouse Button")
-		junkRemoverItems = {}
-		if not junkRemoverEnabled then
-			junkRemoverEnabled = false
-		end
-		self:UnregisterEvent("ADDON_LOADED")
-	end
+function JunkRemover:FrameOnEvent(event, arg1)
 	if junkRemoverEnabled then
 		if event == "LOOT_OPENED" then
-			local junkRemoverTemp, junkRemoverName, junkRemoverQuantity, junkRemoverQuality
-			j = table.getn(junkRemoverItems) + 1
+			local name, quality
+			j = table.getn(JunkRemover.Items) + 1
 			for i = 1, GetNumLootItems() do
-				junkRemoverTemp, junkRemoverName, junkRemoverTemp, junkRemoverTemp, junkRemoverQuality = GetLootSlotInfo(i)
-				if junkRemoverQuality == 0 then
-					junkRemoverItems[j] = junkRemoverName
+				_, name, _, _, quality = GetLootSlotInfo(i)
+				if quality == 0 then
+					JunkRemover.Items[j] = name
 					j = j + 1
 				end
 			end
 		end
-		if event == "BAG_UPDATE" then
-			
-		end
 	end
 end
 
-function junkRemoverFindItem(name)
-	local junkRemoverSlots = {}
-	local junkRemoverName
+function JunkRemover:FindItem(name)
+	local slots = {}
+	local itemName
 	for i = 0, NUM_BAG_SLOTS do
-	junkRemoverSlots = C_Container.GetContainerFreeSlots(i)
+	slots = C_Container.GetContainerFreeSlots(i)
 		for j = 1, C_Container.GetContainerNumSlots(i) do
-			if not junkRemoverTableContains(j, junkRemoverSlots) then
-				junkRemoverName = GetItemInfo(C_Container.GetContainerItemID(i, j))
-				if name == junkRemoverName then
+			if not self:TableContains(j, slots) then
+				itemName = C_Item.GetItemInfo(C_Container.GetContainerItemID(i, j))
+				if name == itemName then
 					return i, j
 				end
 			end
@@ -75,7 +46,7 @@ function junkRemoverFindItem(name)
 	return -1, -1
 end
 
-function junkRemoverTableContains(number, tab)
+function JunkRemover:TableContains(number, tab)
 	for i = 1, table.getn(tab) do
 		if tab[i] == number then
 			return true
@@ -84,35 +55,55 @@ function junkRemoverTableContains(number, tab)
 	return false
 end
 
-function junkRemoverCheckButton(parent, x, y)
-	local button = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-	local font = button:CreateFontString(nil, nil, "GameFontNormal")
-	font:SetText("Toggle Junk Remover on and off")
-	font:SetPoint("LEFT", x + 10, 0)
-	button:SetFontString(font)
-	button:SetPoint("TOPLEFT", x, y)
-	button:Show()
-	table.insert(junkRemoverButtons, button)
+function JunkRemover:OnInitialize()
+	self.Frame = CreateFrame("FRAME", nil, UIParent)
+	self.Frame:RegisterEvent("LOOT_OPENED")
+	self.Frame:RegisterEvent("BAG_UPDATE")
+	self.Frame:SetScript("OnEvent", self.FrameOnEvent)
+	self.Items = {}
+	if not junkRemoverEnabled then
+		junkRemoverEnabled = false
+	end
+	self.Button = CreateFrame("Button", "Junk Remover Button", UIParent, "SecureActionButtonTemplate")
+	self.Button:SetScript("OnClick", function(self, button)
+		if button == "Left Mouse Button" then
+			local bag, slot
+			if JunkRemover.Items ~= nil then
+				for i = 1, table.getn(JunkRemover.Items) do
+					bag, slot = JunkRemover:FindItem(JunkRemover.Items[i])
+					if bag ~= -1 then
+						C_Container.PickupContainerItem(bag, slot)
+						print(JunkRemover.Items[i].." Removed")
+						table.remove(JunkRemover.Items, i)
+						DeleteCursorItem()
+					end
+				end
+			end
+		end
+	end)
+	SetOverrideBindingClick(self.Button, true, "BUTTON3", self.Button:GetName(), "Left Mouse Button")
+	local options = {
+		name = "Junk Remover",
+		handler = JunkRemover,
+		type = "group",
+		args = {
+			toggle = {
+				name = "Toggle Junk Remover",
+				type = "toggle",
+				desc = "Toggle Junk Remover on and off",
+				set = "SetToggle",
+				get = "GetToggle",
+			}
+		}
+	}
+	LibStub("AceConfig-3.0"):RegisterOptionsTable("JunkRemover", options, nil)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("JunkRemover", "Junk Remover")
 end
 
-function junkRemoverOptionsRefresh()
-	junkRemoverButtons[1]:SetChecked(junkRemoverEnabled)
+function JunkRemover:SetToggle(info, val)
+	junkRemoverEnabled = val
 end
 
-function junkRemoverOptionsOkay()
-	junkRemoverEnabled = junkRemoverButtons[1]:GetChecked()
+function JunkRemover:GetToggle(info)
+	return junkRemoverEnabled
 end
-
-local junkRemoverFrame = CreateFrame("FRAME", nil, UIParent)
-junkRemoverFrame:RegisterEvent("ADDON_LOADED")
-junkRemoverFrame:RegisterEvent("LOOT_OPENED")
-junkRemoverFrame:RegisterEvent("BAG_UPDATE")
-junkRemoverFrame:SetScript("OnEvent", junkRemoverFrameOnEvent)
-
-local junkRemoverOptions = CreateFrame("FRAME")
-junkRemoverOptions.name = "Junk Remover"
-junkRemoverCheckButton(junkRemoverOptions, 20, -20)
-junkRemoverOptions.refresh = junkRemoverOptionsRefresh
-junkRemoverOptions.okay = junkRemoverOptionsOkay
-junkRemoverOptions.cancel = junkRemoverOptionsRefresh
-InterfaceOptions_AddCategory(junkRemoverOptions)
